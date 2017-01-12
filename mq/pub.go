@@ -35,6 +35,7 @@ func (p Publisher) Start(payloadchan chan []byte) {
 				ch = p.getChannel()
 				continue
 			}
+			log.Debugf("payload [%s] send", payload)
 			break
 		}
 	}

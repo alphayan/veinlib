@@ -90,7 +90,7 @@ func (s Subscriber) Start() {
 		msgs, err := ch.Consume(
 			q.Name, // queue
 			"",     // consumer
-			false,  // auto-ack
+			true,   // auto-ack
 			false,  // exclusive
 			false,  // no-local
 			false,  // no-wait
