@@ -18,5 +18,5 @@ type DeliveryForwarder func(amqp.Delivery)
 
 // URL rabbit mq connect url
 func (c *Config) URL() string {
-	return "amqp://" + config.MQUsername + ":" + config.MQPassword + "@" + config.MQHost + ":" + config.MQPort
+	return "amqp://" + c.Username + ":" + c.Password + "@" + c.Host + ":" + c.Port
 }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/streadway/amqp"
 )
 
 // RPC a rabbitmq processor in rpc model

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/streadway/amqp"
 )
 
 // Worker a rabbitmq worker in work queues model
