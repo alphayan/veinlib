@@ -40,6 +40,9 @@ func (p Publisher) Start(payloadchan chan []byte) {
 }
 
 func (p Publisher) getChannel() amqp.Channel {
+	var conn *amqp.Connection
+	var ch *amqp.Channel
+	var err error
 	for {
 		conn, err = amqp.Dial(p.Config.URL())
 		if err != nil {
