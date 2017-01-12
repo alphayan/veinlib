@@ -1,0 +1,4 @@
+package: veinlib/mq
+import:
+- package: github.com/Sirupsen/logrus
+- package: github.com/streadway/amqp
