@@ -38,6 +38,20 @@ func (s Subscriber) Start() {
 			time.Sleep(time.Second * 2)
 			continue
 		}
+		err = ch.ExchangeDeclare(
+			s.Exchange, // name
+			"fanout",   // type
+			true,       // durable
+			false,      // auto-deleted
+			false,      // internal
+			false,      // no-wait
+			nil,        // arguments
+		)
+		if err != nil {
+			log.Error(err, "Retry in 2 seconds")
+			time.Sleep(time.Second * 2)
+			continue
+		}
 		q, err := ch.QueueDeclare(
 			s.Queue, // name
 			true,    // durable
