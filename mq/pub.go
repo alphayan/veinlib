@@ -39,7 +39,7 @@ func (p Publisher) Start(payloadchan chan []byte) {
 	}
 }
 
-func (p Publisher) getChannel() amqp.Channel {
+func (p Publisher) getChannel() *amqp.Channel {
 	var conn *amqp.Connection
 	var ch *amqp.Channel
 	var err error
