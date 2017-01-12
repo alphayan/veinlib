@@ -55,7 +55,7 @@ func (s Subscriber) Start() {
 		q, err := ch.QueueDeclare(
 			s.Queue, // name
 			true,    // durable
-			false,   // delete when unused
+			true,    // delete when unused
 			false,   // exclusive
 			false,   // no-wait
 			nil,     // arguments
