@@ -32,6 +32,7 @@ func (p Publisher) Start(payloadchan chan []byte) {
 				})
 			if err != nil {
 				log.Error(err, "connection refused,reconnecting...")
+				ch = p.getChannel()
 				continue
 			}
 			break
@@ -44,6 +45,7 @@ func (p Publisher) getChannel() *amqp.Channel {
 	var ch *amqp.Channel
 	var err error
 	for {
+		log.Debug("mq url: ", p.Config.URL())
 		conn, err = amqp.Dial(p.Config.URL())
 		if err != nil {
 			log.Error(err, "Retry in 2 seconds")
