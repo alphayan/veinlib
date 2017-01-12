@@ -11,7 +11,7 @@ type Config struct {
 }
 
 // DeliveryProcessor process a rabbitmq delivery then respond a delivery
-type DeliveryProcessor func(amqp.Delivery) amqp.Delivery
+type DeliveryProcessor func(amqp.Delivery) amqp.Publishing
 
 // DeliveryForwarder just forward a delivery to next stop
 type DeliveryForwarder func(amqp.Delivery)
