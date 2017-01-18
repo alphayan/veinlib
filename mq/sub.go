@@ -102,7 +102,7 @@ func (s Subscriber) Start() {
 			continue
 		}
 		for d := range msgs {
-			log.Debugf("%s received a msg:%+v", s.Queue, d)
+			log.Debugf("%s received a msg.", s.Queue)
 			go s.Forwarder(d)
 		}
 

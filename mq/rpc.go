@@ -75,7 +75,7 @@ func (r RPC) Start() {
 			continue
 		}
 		for d := range msgs {
-			log.Debugf("%s received a msg:%+v", r.Queue, d)
+			log.Debugf("%s received a msg.", r.Queue)
 			pub := r.Processor(d)
 			err := ch.Publish(
 				"",        // exchange

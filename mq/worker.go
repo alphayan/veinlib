@@ -75,7 +75,7 @@ func (w Worker) Start() {
 			continue
 		}
 		for d := range msgs {
-			log.Debugf("%s received a msg:%+v", w.Queue, d)
+			log.Debugf("%s received a msg.", w.Queue)
 			go w.Forwarder(d)
 		}
 

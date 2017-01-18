@@ -3,12 +3,14 @@ package mq
 import (
 	"testing"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
 var pipe chan []byte
 
 func TestPubSub(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	// start pub and sub
 	var sender chan []byte
 	sender = make(chan []byte)
@@ -36,7 +38,9 @@ func TestPubSub(t *testing.T) {
 	}
 	go sub.Start()
 	sender <- []byte("Hello World!")
+	t.Log("Sent")
 	rcv := <-pipe
+	t.Log("Received")
 	if string(rcv) != "Hello World!" {
 		t.Errorf("delivery fail, src:%s ,dst:%s", "Hello World!", rcv)
 	}
