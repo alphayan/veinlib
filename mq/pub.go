@@ -18,6 +18,7 @@ func (p Publisher) Start(payloadchan chan []byte) {
 	log.Infof("A new publisher on %s", p.Exchange)
 	ch := p.getChannel()
 	defer ch.Close()
+	defer log.Errorf("publisher of %s terminate!", p.Exchange)
 	var err error
 	for payload := range payloadchan {
 		for {
@@ -27,6 +28,7 @@ func (p Publisher) Start(payloadchan chan []byte) {
 				false,      // mandatory
 				false,      // immediate
 				amqp.Publishing{
+					Timestamp:   time.Now(),
 					ContentType: "text/plain",
 					Body:        payload,
 				})

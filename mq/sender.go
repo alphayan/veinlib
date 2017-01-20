@@ -27,6 +27,7 @@ func (s Sender) Start(payloadchan chan []byte) {
 				false,   // mandatory
 				false,   // immediate
 				amqp.Publishing{
+					Timestamp:   time.Now(),
 					ContentType: "text/plain",
 					Body:        payload,
 				})

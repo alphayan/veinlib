@@ -38,9 +38,9 @@ func TestPubSub(t *testing.T) {
 	}
 	go sub.Start()
 	sender <- []byte("Hello World!")
-	t.Log("Sent")
+	log.Debug("Sent")
 	rcv := <-pipe
-	t.Log("Received")
+	log.Debug("Received")
 	if string(rcv) != "Hello World!" {
 		t.Errorf("delivery fail, src:%s ,dst:%s", "Hello World!", rcv)
 	}
