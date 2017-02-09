@@ -48,19 +48,15 @@ func (rpcClient *RPCClient) Start() {
 				continue
 			}
 			for {
-				timeout := make(chan bool, 1)
-				go func() {
-					time.Sleep(3 * time.Second) // timeout three second
-					timeout <- true
-				}()
 				select {
 				case d := <-msgs:
 					if corrID == d.CorrelationId {
 						rpcClient.ReplyChan <- d.Body
+						goto End
 					} else {
 						log.Errorf("msg correlationID : %s  invalide correlationID %s", corrID, d.CorrelationId)
 					}
-				case <-timeout:
+				case <-time.After(time.Second * 3):
 					log.Errorf("mq rpc error : rpc reply timeout")
 					goto End
 				}
@@ -76,16 +72,16 @@ func (rpcClient *RPCClient) Send(msg []byte) (reply []byte, err error) {
 	rpcClient.Lock()
 	defer rpcClient.Unlock()
 	rpcClient.PayloadChan <- msg
-	timeout := make(chan bool, 1)
-	go func() {
-		time.Sleep(3 * time.Second) // timeout three second
-		timeout <- true
-	}()
 	select {
-	case reply = <-rpcClient.ReplyChan:
-		return reply, nil
-	case <-timeout:
-		return nil, errors.New("rpc reply time out")
+	case rpcClient.PayloadChan <- msg:
+		select {
+		case reply = <-rpcClient.ReplyChan:
+			return reply, nil
+		case <-time.After(time.Second * 3):
+			return nil, errors.New("rpc reply time out")
+		}
+	case <-time.After(time.Second * 3):
+		return nil, errors.New("rpc send time out")
 	}
 }
 
