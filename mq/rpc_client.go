@@ -1,6 +1,8 @@
 package mq
 
 import (
+	"errors"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -11,16 +13,21 @@ import (
 // RPCClient a rabbitmq worker in work queues model
 type RPCClient struct {
 	Config Config
-	Queue  string
+	sync.RWMutex
+	PayloadChan chan []byte
+	ReplyChan   chan []byte
+	Queue       string
 }
 
 // Start a new worker
-func (rpcClient RPCClient) Start(payloadchan chan []byte, replychan chan []byte) {
+func (rpcClient *RPCClient) Start() {
+	rpcClient.PayloadChan = make(chan []byte)
+	rpcClient.ReplyChan = make(chan []byte)
 	log.Infof("A new rpc on %s", rpcClient.Queue)
 	ch, q, msgs := rpcClient.getChannel()
 	defer ch.Close()
 	var err error
-	for payload := range payloadchan {
+	for payload := range rpcClient.PayloadChan {
 		for {
 			corrID := uuid.NewV1().String()
 			err = ch.Publish(
@@ -43,17 +50,18 @@ func (rpcClient RPCClient) Start(payloadchan chan []byte, replychan chan []byte)
 			for {
 				timeout := make(chan bool, 1)
 				go func() {
-					time.Sleep(3 * time.Second) // one second
+					time.Sleep(3 * time.Second) // timeout three second
 					timeout <- true
 				}()
 				select {
 				case d := <-msgs:
 					if corrID == d.CorrelationId {
-						replychan <- d.Body
+						rpcClient.ReplyChan <- d.Body
 					} else {
 						log.Errorf("msg correlationID : %s  invalide correlationID %s", corrID, d.CorrelationId)
 					}
 				case <-timeout:
+					log.Errorf("mq rpc error : rpc reply timeout")
 					goto End
 				}
 			}
@@ -63,7 +71,25 @@ func (rpcClient RPCClient) Start(payloadchan chan []byte, replychan chan []byte)
 	}
 }
 
-func (rpcClient RPCClient) getChannel() (*amqp.Channel, amqp.Queue, <-chan amqp.Delivery) {
+// Send Send Msg and waiting reply
+func (rpcClient *RPCClient) Send(msg []byte) (reply []byte, err error) {
+	rpcClient.Lock()
+	defer rpcClient.Unlock()
+	rpcClient.PayloadChan <- msg
+	timeout := make(chan bool, 1)
+	go func() {
+		time.Sleep(3 * time.Second) // timeout three second
+		timeout <- true
+	}()
+	select {
+	case reply = <-rpcClient.ReplyChan:
+		return reply, nil
+	case <-timeout:
+		return nil, errors.New("rpc reply time out")
+	}
+}
+
+func (rpcClient *RPCClient) getChannel() (*amqp.Channel, amqp.Queue, <-chan amqp.Delivery) {
 	var conn *amqp.Connection
 	var ch *amqp.Channel
 	var q amqp.Queue
