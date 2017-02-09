@@ -2,6 +2,7 @@ package mq
 
 import (
 	"testing"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
@@ -37,6 +38,7 @@ func TestPubSub(t *testing.T) {
 		Forwarder: fwd,
 	}
 	go sub.Start()
+	time.Sleep(time.Second)
 	sender <- []byte("Hello World!")
 	log.Debug("Sent")
 	rcv := <-pipe

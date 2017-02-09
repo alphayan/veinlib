@@ -71,7 +71,6 @@ func (rpcClient *RPCClient) Start() {
 func (rpcClient *RPCClient) Send(msg []byte) (reply []byte, err error) {
 	rpcClient.Lock()
 	defer rpcClient.Unlock()
-	rpcClient.PayloadChan <- msg
 	select {
 	case rpcClient.PayloadChan <- msg:
 		select {
