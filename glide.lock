@@ -1,0 +1,12 @@
+hash: 085d90832f0aeddbebcd786561e8800a551c40d988452827fffd6e3b5c55a4af
+updated: 2017-02-13T15:30:08.453618059+08:00
+imports:
+- name: github.com/satori/go.uuid
+  version: b061729afc07e77a8aa4fad0a2fd840958f1942a
+- name: github.com/Sirupsen/logrus
+  version: 800b0fc4a6cbf28a01d026ab54d6dec7050282fa
+- name: github.com/streadway/amqp
+  version: 63795daa9a446c920826655f26ba31c81c860fd6
+- name: golang.org/x/sys/unix
+  version: aaabbdc969c3935a2a7f61efac801e7163c73a2a
+testImports: []
