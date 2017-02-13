@@ -9,8 +9,9 @@ import (
 
 // RPC a rabbitmq processor in rpc model
 type RPC struct {
-	Config    Config
-	Queue     string
+	Config Config
+	Queue  string
+
 	Processor DeliveryProcessor
 }
 
