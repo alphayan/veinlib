@@ -14,7 +14,7 @@ func TestRpcClient(t *testing.T) {
 		Config: Config{
 			Username: "guest",
 			Password: "guest",
-			Host:     "localhost",
+			Host:     host,
 			Port:     "5672",
 		},
 		Queue: "veinlib_test_rpc",
@@ -24,7 +24,7 @@ func TestRpcClient(t *testing.T) {
 		Config: Config{
 			Username: "guest",
 			Password: "guest",
-			Host:     "localhost",
+			Host:     host,
 			Port:     "5672",
 		},
 		Queue:     "veinlib_test_rpc",

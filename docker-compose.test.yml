@@ -1,3 +1,11 @@
 sut:
     build: .
     dockerfile: Dockerfile.ci
+    links:
+        - rabbitmq
+    environment:
+        - MQ_HOST=rabbitmq
+    cmd: go test $(go list ./... | grep -v /vendor/)
+rabbitmq:
+    image: rabbitmq
+    hostname: test-rabbit

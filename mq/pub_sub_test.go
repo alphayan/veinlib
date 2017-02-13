@@ -11,7 +11,6 @@ import (
 var pipe chan []byte
 
 func TestPubSub(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
 	// start pub and sub
 	var sender chan []byte
 	sender = make(chan []byte)
@@ -20,7 +19,7 @@ func TestPubSub(t *testing.T) {
 		Config: Config{
 			Username: "guest",
 			Password: "guest",
-			Host:     "localhost",
+			Host:     host,
 			Port:     "5672",
 		},
 		Exchange: "veinlib_test_exchange",
@@ -30,7 +29,7 @@ func TestPubSub(t *testing.T) {
 		Config: Config{
 			Username: "guest",
 			Password: "guest",
-			Host:     "localhost",
+			Host:     host,
 			Port:     "5672",
 		},
 		Queue:     "veinlib_test_queue",
