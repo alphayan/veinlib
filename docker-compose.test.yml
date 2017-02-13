@@ -5,7 +5,7 @@ sut:
         - rabbitmq
     environment:
         - MQ_HOST=rabbitmq
-    cmd: go test $(go list ./... | grep -v /vendor/)
+    command: go test $(go list ./... | grep -v /vendor/)
 rabbitmq:
     image: rabbitmq
     hostname: test-rabbit
