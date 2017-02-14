@@ -1,11 +1,10 @@
 sut:
     build: .
-    dockerfile: Dockerfile.ci
     links:
         - rabbitmq
     environment:
         - MQ_HOST=rabbitmq
-    command: run_tests.sh
+    command: sh run_tests.sh
 rabbitmq:
     image: rabbitmq
     hostname: test-rabbit
