@@ -11,7 +11,7 @@ var host string
 
 func TestMain(m *testing.M) {
 	log.SetLevel(log.DebugLevel)
-	host := os.Getenv("MQ_HOST")
+	host = os.Getenv("MQ_HOST")
 	if host == "" {
 		host = "localhost"
 	}
