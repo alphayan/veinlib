@@ -1,16 +1,26 @@
 package mq
 
 import (
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
-// Publisher a rabbitmq worker in work queues model
+// Publisher a rabbitmq worker in work queues model.
 type Publisher struct {
+	sync.RWMutex
 	Config   Config
 	Exchange string
+	ready    bool
+}
+
+// IsReady tall you is this publisher ready to ues.
+func (p *Publisher) IsReady() bool {
+	p.RLock()
+	defer p.RUnlock()
+	return p.ready
 }
 
 // Start a new worker
@@ -20,6 +30,9 @@ func (p *Publisher) Start(payloadchan chan []byte) {
 		log.Errorf("publisher of %s not start! %s", p.Exchange, err)
 		return
 	}
+	p.Lock()
+	p.ready = true
+	p.Unlock()
 	log.Infof("A new publisher on %s", p.Exchange)
 	defer func() {
 		ch.Close()
@@ -57,8 +70,10 @@ func (p *Publisher) getChannel() (*amqp.Connection, *amqp.Channel, error) {
 	var ch *amqp.Channel
 	var err error
 	for {
+		p.RLock()
 		log.Debug("mq url: ", p.Config.URL())
 		conn, err = amqp.Dial(p.Config.URL())
+		p.RUnlock()
 		if err != nil {
 			log.Error(err, "Retry in 2 seconds")
 			time.Sleep(time.Second * 2)
@@ -70,7 +85,7 @@ func (p *Publisher) getChannel() (*amqp.Connection, *amqp.Channel, error) {
 		if err != nil {
 			log.Errorf("Publisher on %s is terminated,%s", p.Exchange, err)
 			conn.Close()
-			return nil, nil, error
+			return nil, nil, err
 		}
 		err = ch.ExchangeDeclare(
 			p.Exchange, // name
@@ -84,7 +99,7 @@ func (p *Publisher) getChannel() (*amqp.Connection, *amqp.Channel, error) {
 		if err != nil {
 			log.Errorf("Publisher on %s is terminated,%s", p.Exchange, err)
 			conn.Close()
-			return nil, nil, error
+			return nil, nil, err
 		}
 		return conn, ch, nil
 	}

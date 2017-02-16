@@ -19,12 +19,25 @@ func TestPubSub(t *testing.T) {
 		Config: Config{
 			Username: "guest",
 			Password: "guest",
-			Host:     host,
+			Host:     "wrong_host",
 			Port:     "5672",
 		},
 		Exchange: "veinlib_test_exchange",
 	}
 	go pub.Start(sender)
+	time.Sleep(time.Second * 3)
+	ok := pub.IsReady()
+	if ok {
+		t.Errorf("connect a wrong host")
+	}
+	pub.Lock()
+	pub.Config.Host = host
+	pub.Unlock()
+	time.Sleep(time.Second * 3)
+	ok = pub.IsReady()
+	if !ok {
+		t.Errorf("someting wrong,pub not start.")
+	}
 	var sub = Subscriber{
 		Config: Config{
 			Username: "guest",
