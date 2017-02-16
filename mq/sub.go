@@ -8,6 +8,9 @@ import (
 )
 
 // Subscriber a rabbitmq worker in work queues model
+// If you want only one of your inst receive the msg,
+// give a queue name. Or all inst will receive msg
+// when you leave Queue empty.
 type Subscriber struct {
 	Config    Config
 	Exchange  string
@@ -34,9 +37,8 @@ func (s Subscriber) Start() {
 		// receive channel
 		ch, err = conn.Channel()
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Subscriber on %s is terminated,%s", s.Exchange, err)
+			return
 		}
 		err = ch.ExchangeDeclare(
 			s.Exchange, // name
@@ -48,9 +50,8 @@ func (s Subscriber) Start() {
 			nil,        // arguments
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Subscriber on %s is terminated,%s", s.Exchange, err)
+			return
 		}
 		q, err := ch.QueueDeclare(
 			s.Queue, // name
@@ -61,9 +62,8 @@ func (s Subscriber) Start() {
 			nil,     // arguments
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Subscriber on %s is terminated,%s", s.Exchange, err)
+			return
 		}
 		err = ch.QueueBind(
 			q.Name,     // queue name
@@ -73,9 +73,8 @@ func (s Subscriber) Start() {
 			nil,
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Subscriber on %s is terminated,%s", s.Exchange, err)
+			return
 		}
 		err = ch.Qos(
 			1,     // prefetch count
@@ -83,9 +82,8 @@ func (s Subscriber) Start() {
 			false, // global
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Subscriber on %s is terminated,%s", s.Exchange, err)
+			return
 		}
 		msgs, err := ch.Consume(
 			q.Name, // queue
@@ -97,10 +95,10 @@ func (s Subscriber) Start() {
 			nil,    // args
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Subscriber on %s is terminated,%s", s.Exchange, err)
+			return
 		}
+		// Msgs channel will close when conn is broken, then reconnet.
 		for d := range msgs {
 			log.Debugf("%s received a msg.", s.Queue)
 			go s.Forwarder(d)

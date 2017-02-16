@@ -33,9 +33,8 @@ func (w Worker) Start() {
 		// receive channel
 		ch, err = conn.Channel()
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Worker on %s is terminated,%s", w.Queue, err)
+			return
 		}
 		q, err := ch.QueueDeclare(
 			w.Queue, // name
@@ -46,9 +45,8 @@ func (w Worker) Start() {
 			nil,     // arguments
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Worker on %s is terminated,%s", w.Queue, err)
+			return
 		}
 		err = ch.Qos(
 			1,     // prefetch count
@@ -56,9 +54,8 @@ func (w Worker) Start() {
 			false, // global
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Worker on %s is terminated,%s", w.Queue, err)
+			return
 		}
 		msgs, err := ch.Consume(
 			q.Name, // queue
@@ -70,12 +67,11 @@ func (w Worker) Start() {
 			nil,    // args
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("Worker on %s is terminated,%s", w.Queue, err)
+			return
 		}
 		for d := range msgs {
-			log.Debugf("%s received a msg.", w.Queue)
+			//log.Debugf("%s received a msg.", w.Queue)
 			go w.Forwarder(d)
 		}
 

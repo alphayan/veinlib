@@ -34,9 +34,8 @@ func (r RPC) Start() {
 		// receive channel
 		ch, err = conn.Channel()
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("rpc on %s is terminated,%s", r.Queue, err)
+			return
 		}
 		q, err := ch.QueueDeclare(
 			r.Queue, // name
@@ -47,9 +46,8 @@ func (r RPC) Start() {
 			nil,     // arguments
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("rpc on %s is terminated,%s", r.Queue, err)
+			return
 		}
 		err = ch.Qos(
 			1,     // prefetch count
@@ -57,9 +55,8 @@ func (r RPC) Start() {
 			false, // global
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("rpc on %s is terminated,%s", r.Queue, err)
+			return
 		}
 		msgs, err := ch.Consume(
 			q.Name, // queue
@@ -71,9 +68,8 @@ func (r RPC) Start() {
 			nil,    // args
 		)
 		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+			log.Errorf("rpc on %s is terminated,%s", r.Queue, err)
+			return
 		}
 		for d := range msgs {
 			log.Debugf("%s received a msg.", r.Queue)
