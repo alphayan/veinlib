@@ -30,7 +30,6 @@ func (r RPC) Start() {
 			time.Sleep(time.Second * 2)
 			continue
 		}
-		log.Info("RabbitMQ connect successful.")
 		// receive channel
 		ch, err = conn.Channel()
 		if err != nil {
@@ -72,7 +71,7 @@ func (r RPC) Start() {
 			return
 		}
 		for d := range msgs {
-			log.Debugf("%s received a msg.", r.Queue)
+			//log.Debugf("%s received a msg.", r.Queue)
 			pub := r.Processor(d)
 			err := ch.Publish(
 				"",        // exchange

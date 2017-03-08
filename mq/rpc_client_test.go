@@ -1,6 +1,7 @@
 package mq
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -33,11 +34,16 @@ func TestRpcClient(t *testing.T) {
 	go rpc.Start()
 	time.Sleep(time.Second)
 	log.Info("start sent rpc to veinlib_test_queue")
-	reply, err := rpcClient.Send([]byte("test msg"))
-	if err != nil {
-		log.Errorf("rpc_client_test error : %s", err)
+	for i := 0; i < 100; i++ {
+		reply, err := rpcClient.Send([]byte(strconv.Itoa(i)))
+		if err != nil {
+			t.Errorf("rpc_client_test error : %s", err)
+		}
+		j, err := strconv.Atoi(string(reply))
+		if err != nil || j != i {
+			t.Error("value changed")
+		}
 	}
-	log.Debugf("rpc_client_test success, reply is %s", string(reply))
 }
 
 func rpcReply(delivery amqp.Delivery) amqp.Publishing {

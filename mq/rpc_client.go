@@ -23,7 +23,7 @@ type RPCClient struct {
 func (rpcClient *RPCClient) Start() {
 	rpcClient.PayloadChan = make(chan []byte)
 	rpcClient.ReplyChan = make(chan []byte)
-	log.Infof("A new rpc on %s", rpcClient.Queue)
+	log.Infof("A new rpc client connect to %s", rpcClient.Queue)
 	ch, q, msgs := rpcClient.getChannel()
 	defer ch.Close()
 	var err error
@@ -106,12 +106,12 @@ func (rpcClient *RPCClient) getChannel() (*amqp.Channel, amqp.Queue, <-chan amqp
 			continue
 		}
 		q, err = ch.QueueDeclare(
-			rpcClient.Queue, // name
-			true,            // durable
-			false,           // delete when unused
-			false,           // exclusive
-			false,           // no-wait
-			nil,             // arguments
+			"",    // name
+			false, // durable
+			false, // delete when unused
+			true,  // exclusive
+			false, // no-wait
+			nil,   // arguments
 		)
 		if err != nil {
 			log.Error(err, "Retry in 2 seconds")
