@@ -1,7 +1,7 @@
 package mq
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -13,125 +13,126 @@ import (
 // RPCClient a rabbitmq worker in work queues model
 type RPCClient struct {
 	Config Config
+	Queue  string
+	conn   *amqp.Connection
+	ch     *amqp.Channel
+	ready  bool
 	sync.RWMutex
-	PayloadChan chan []byte
-	ReplyChan   chan []byte
-	Queue       string
 }
 
-// Start a new worker
-func (rpcClient *RPCClient) Start() {
-	rpcClient.PayloadChan = make(chan []byte)
-	rpcClient.ReplyChan = make(chan []byte)
-	log.Infof("A new rpc client connect to %s", rpcClient.Queue)
-	ch, q, msgs := rpcClient.getChannel()
-	defer ch.Close()
-	var err error
-	for payload := range rpcClient.PayloadChan {
-		for {
-			corrID := uuid.NewV1().String()
-			err = ch.Publish(
-				"",              // exchange
-				rpcClient.Queue, // routing key
-				false,           // mandatory
-				false,           // immediate
-				amqp.Publishing{
-					Timestamp:     time.Now(),
-					ContentType:   "text/plain",
-					Body:          payload,
-					CorrelationId: corrID,
-					ReplyTo:       q.Name,
-				})
-			if err != nil {
-				log.Error(err, "connection refused,reconnecting...")
-				ch, q, msgs = rpcClient.getChannel()
-				continue
-			}
-			for {
-				select {
-				case d := <-msgs:
-					if corrID == d.CorrelationId {
-						rpcClient.ReplyChan <- d.Body
-						goto End
-					} else {
-						log.Errorf("msg correlationID : %s  invalide correlationID %s", corrID, d.CorrelationId)
-					}
-				case <-time.After(time.Second * 3):
-					log.Errorf("mq rpc error : rpc reply timeout")
-					goto End
-				}
-			}
-		End:
-			break
+func (c *RPCClient) isReady() bool {
+	c.RLock()
+	defer c.RUnlock()
+	return c.ready
+}
+
+func (c *RPCClient) getChannel() *amqp.Channel {
+	c.RLock()
+	defer c.RUnlock()
+	return c.ch
+}
+
+func (c *RPCClient) connect() {
+	c.Lock()
+	c.ready = false
+	c.Unlock()
+	for {
+		conn, err := amqp.Dial(c.Config.URL())
+		if err != nil {
+			log.Error(err, "Retry in 2 seconds")
+			time.Sleep(time.Second * 2)
+			continue
 		}
+		// receive channel
+		ch, err := conn.Channel()
+		if err != nil {
+			if conn != nil {
+				conn.Close()
+			}
+			log.Error(err, "Retry in 2 seconds")
+			time.Sleep(time.Second * 2)
+			continue
+		}
+		c.Lock()
+		if c.ch != nil {
+			c.ch.Close()
+		}
+		if c.conn != nil {
+			c.conn.Close()
+		}
+		c.conn = conn
+		c.ch = ch
+		c.ready = true
+		c.Unlock()
+		return
 	}
+}
+
+// Start init client connection
+func (c *RPCClient) Start() {
+	c.connect()
+	log.Infof("A new rpc client connect to %s", c.Queue)
 }
 
 // Send Send Msg and waiting reply
-func (rpcClient *RPCClient) Send(msg []byte) (reply []byte, err error) {
-	rpcClient.Lock()
-	defer rpcClient.Unlock()
-	select {
-	case rpcClient.PayloadChan <- msg:
-		select {
-		case reply = <-rpcClient.ReplyChan:
-			return reply, nil
-		case <-time.After(time.Second * 3):
-			return nil, errors.New("rpc reply time out")
-		}
-	case <-time.After(time.Second * 3):
-		return nil, errors.New("rpc send time out")
+func (c *RPCClient) Send(msg []byte) (reply []byte, err error) {
+	if !c.isReady() {
+		return []byte{}, fmt.Errorf("queue %s is not ready for use", c.Queue)
 	}
-}
-
-func (rpcClient *RPCClient) getChannel() (*amqp.Channel, amqp.Queue, <-chan amqp.Delivery) {
-	var conn *amqp.Connection
-	var ch *amqp.Channel
-	var q amqp.Queue
-	var msgs <-chan amqp.Delivery
-	var err error
+	corrID := uuid.NewV1().String()
+	ch := c.getChannel()
+	q, err := ch.QueueDeclare(
+		"",    // name
+		false, // durable
+		false, // delete when unused
+		true,  // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+	if err != nil {
+		go c.connect()
+		return []byte{}, fmt.Errorf("require a tmp reply queue failed: %s", err)
+	}
+	msgs, err := ch.Consume(
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
+	)
+	if err != nil {
+		// consume 不会因为没有连接而失败，所以不尝试重连
+		return []byte{}, fmt.Errorf("require a tmp reply queue failed: %s", err)
+	}
+	err = ch.Publish(
+		"",      // exchange
+		c.Queue, // routing key
+		false,   // mandatory
+		false,   // immediate
+		amqp.Publishing{
+			Timestamp:     time.Now(),
+			ContentType:   "text/plain",
+			Body:          msg,
+			CorrelationId: corrID,
+			ReplyTo:       q.Name,
+		})
+	if err != nil {
+		go c.connect()
+		return []byte{}, fmt.Errorf("send msg failed: %s", err)
+	}
 	for {
-		conn, err = amqp.Dial(rpcClient.Config.URL())
-		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
+		select {
+		case d := <-msgs:
+			if corrID != d.CorrelationId {
+				log.Errorf("msg correlationID : %s  invalide correlationID %s", corrID, d.CorrelationId)
+				continue
+			}
+			return d.Body, nil
+		case <-time.After(time.Second * 3):
+			return []byte{}, fmt.Errorf("rpc reply timeout")
 		}
-		log.Info("RabbitMQ connect successful.")
-		// receive channel
-		ch, err = conn.Channel()
-		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
-		}
-		q, err = ch.QueueDeclare(
-			"",    // name
-			false, // durable
-			false, // delete when unused
-			true,  // exclusive
-			false, // no-wait
-			nil,   // arguments
-		)
-		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
-		}
-		msgs, err = ch.Consume(
-			q.Name, // queue
-			"",     // consumer
-			true,   // auto-ack
-			false,  // exclusive
-			false,  // no-local
-			false,  // no-wait
-			nil,    // args
-		)
-		if err != nil {
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
-		}
-		return ch, q, msgs
 	}
+
 }

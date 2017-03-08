@@ -1,7 +1,9 @@
 package mq
 
 import (
+	"math/rand"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,16 +36,23 @@ func TestRpcClient(t *testing.T) {
 	go rpc.Start()
 	time.Sleep(time.Second)
 	log.Info("start sent rpc to veinlib_test_queue")
-	for i := 0; i < 100; i++ {
-		reply, err := rpcClient.Send([]byte(strconv.Itoa(i)))
-		if err != nil {
-			t.Errorf("rpc_client_test error : %s", err)
-		}
-		j, err := strconv.Atoi(string(reply))
-		if err != nil || j != i {
-			t.Error("value changed")
-		}
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		go func() {
+			req := i
+			wg.Add(1)
+			reply, err := rpcClient.Send([]byte(strconv.Itoa(req)))
+			if err != nil {
+				t.Errorf("rpc_client_test error : %s", err)
+			}
+			res, err := strconv.Atoi(string(reply))
+			if err != nil || res != req {
+				t.Errorf("value changed:%d,%d", res, req)
+			}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 }
 
 func rpcReply(delivery amqp.Delivery) amqp.Publishing {
@@ -53,5 +62,6 @@ func rpcReply(delivery amqp.Delivery) amqp.Publishing {
 		Body:          delivery.Body,
 		Timestamp:     time.Now(),
 	}
+	time.Sleep(time.Microsecond * time.Duration(rand.Int31n(100)))
 	return reply
 }
