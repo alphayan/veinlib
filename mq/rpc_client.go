@@ -15,7 +15,6 @@ type RPCClient struct {
 	Config Config
 	Queue  string
 	conn   *amqp.Connection
-	ch     *amqp.Channel
 	ready  bool
 	sync.RWMutex
 }
@@ -26,10 +25,10 @@ func (c *RPCClient) isReady() bool {
 	return c.ready
 }
 
-func (c *RPCClient) getChannel() *amqp.Channel {
+func (c *RPCClient) getConn() *amqp.Connection {
 	c.RLock()
 	defer c.RUnlock()
-	return c.ch
+	return c.conn
 }
 
 func (c *RPCClient) connect() {
@@ -43,25 +42,11 @@ func (c *RPCClient) connect() {
 			time.Sleep(time.Second * 2)
 			continue
 		}
-		// receive channel
-		ch, err := conn.Channel()
-		if err != nil {
-			if conn != nil {
-				conn.Close()
-			}
-			log.Error(err, "Retry in 2 seconds")
-			time.Sleep(time.Second * 2)
-			continue
-		}
 		c.Lock()
-		if c.ch != nil {
-			c.ch.Close()
-		}
 		if c.conn != nil {
 			c.conn.Close()
 		}
 		c.conn = conn
-		c.ch = ch
 		c.ready = true
 		c.Unlock()
 		return
@@ -80,7 +65,13 @@ func (c *RPCClient) Send(msg []byte) (reply []byte, err error) {
 		return []byte{}, fmt.Errorf("queue %s is not ready for use", c.Queue)
 	}
 	corrID := uuid.NewV1().String()
-	ch := c.getChannel()
+	// receive channel
+	conn := c.getConn()
+	ch, err := conn.Channel()
+	if err != nil {
+		go c.connect()
+		return []byte{}, fmt.Errorf("make receive channel failed: %s", err)
+	}
 	q, err := ch.QueueDeclare(
 		"",    // name
 		false, // durable
