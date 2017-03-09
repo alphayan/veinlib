@@ -68,6 +68,7 @@ func (c *RPCClient) Send(msg []byte) (reply []byte, err error) {
 	// receive channel
 	conn := c.getConn()
 	ch, err := conn.Channel()
+	defer ch.Close()
 	if err != nil {
 		go c.connect()
 		return []byte{}, fmt.Errorf("make receive channel failed: %s", err)
