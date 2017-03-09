@@ -76,7 +76,7 @@ func (c *RPCClient) Send(msg []byte) (reply []byte, err error) {
 	q, err := ch.QueueDeclare(
 		"",    // name
 		false, // durable
-		false, // delete when unused
+		true,  // delete when unused
 		true,  // exclusive
 		false, // no-wait
 		nil,   // arguments
