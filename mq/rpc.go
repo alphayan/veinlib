@@ -1,6 +1,7 @@
 package mq
 
 import (
+	"runtime"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -70,20 +71,26 @@ func (r RPC) Start() {
 			log.Errorf("rpc on %s is terminated,%s", r.Queue, err)
 			return
 		}
-		for d := range msgs {
-			//log.Debugf("%s received a msg.", r.Queue)
-			pub := r.Processor(d)
-			err := ch.Publish(
-				"",        // exchange
-				d.ReplyTo, // routing key
-				false,     // mandatory
-				false,     // immediate
-				pub,       // Publishing
-			)
-			if err != nil {
-				log.Error(err, "send rpc reply fail")
-			}
+		forever := make(chan bool)
+		log.Debugf("start %d worker to process rpc request", runtime.NumCPU())
+		for i := 0; i < runtime.NumCPU(); i++ {
+			go func(work <-chan amqp.Delivery) {
+				for d := range work {
+					//log.Debugf("%s received a msg.", r.Queue)
+					pub := r.Processor(d)
+					err := ch.Publish(
+						"",        // exchange
+						d.ReplyTo, // routing key
+						false,     // mandatory
+						false,     // immediate
+						pub,       // Publishing
+					)
+					if err != nil {
+						log.Error(err, "send rpc reply fail")
+					}
+				}
+			}(msgs)
 		}
-
+		<-forever
 	}
 }
