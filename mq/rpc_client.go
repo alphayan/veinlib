@@ -64,7 +64,8 @@ func (c *RPCClient) Send(msg []byte) (reply []byte, err error) {
 	if !c.isReady() {
 		return []byte{}, fmt.Errorf("queue %s is not ready for use", c.Queue)
 	}
-	corrID := uuid.NewV1().String()
+	corr ,_:= uuid.NewV1()
+	corrID:=corr.String()
 	// receive channel
 	conn := c.getConn()
 	ch, err := conn.Channel()
